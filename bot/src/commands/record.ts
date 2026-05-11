@@ -12,6 +12,8 @@ import { getGuildSettings } from "../db/settings.js";
 import { Palette } from "../utils/colors.js";
 import { L } from "../utils/locale.js";
 
+const STARTING = new Set<string>();
+
 export const recordCommand: SlashCommand = {
   data: new SlashCommandBuilder()
     .setName("record")
@@ -88,20 +90,30 @@ export const recordCommand: SlashCommand = {
     }
 
     if (sub === "start") {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const guildId = interaction.guild.id;
+      if (STARTING.has(guildId)) {
+        await interaction.editReply({
+          embeds: [errorEmbed("جاري بدء التسجيل الآن — انتظر ثواني ثم جرّب مرة ثانية | Recording is already starting.")],
+        });
+        return;
+      }
       const member = await interaction.guild.members.fetch(interaction.user.id);
       const channel = member.voice.channel ??
         (settings.pin_channel_id
           ? interaction.guild.channels.cache.get(settings.pin_channel_id)
           : null);
       if (!channel || !channel.isVoiceBased()) {
-        await interaction.reply({
+        await interaction.editReply({
           embeds: [errorEmbed(L.notInVoice)],
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
+      STARTING.add(guildId);
       try {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        await interaction.editReply({
+          embeds: [buildEmbed({ description: `جارٍ دخول <#${channel.id}> وبدء التسجيل… | Joining <#${channel.id}> and starting recording…`, color: Palette.warn })],
+        });
         await recordingManager.start({
           channel,
           startedBy: interaction.user.id,
@@ -112,6 +124,8 @@ export const recordCommand: SlashCommand = {
       } catch (err) {
         const msg = err instanceof Error ? err.message : L.unknownError;
         await interaction.editReply({ embeds: [errorEmbed(msg)] });
+      } finally {
+        STARTING.delete(guildId);
       }
       return;
     }

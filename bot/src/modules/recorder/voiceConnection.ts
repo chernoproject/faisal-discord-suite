@@ -14,6 +14,13 @@ import { EventTimeline } from "./eventTimeline.js";
 
 const log = logger.child({ mod: "voice-conn" });
 
+function voiceReadyError(err: unknown): Error {
+  const cause = err instanceof Error ? err.message : String(err);
+  return new Error(
+    `فشل دخول البوت لروم التسجيل أو انتهت مهلة الاتصال الصوتي. تأكد أن البوت يملك صلاحيات View Channel / Connect / Speak في الروم، وأنه غير مفصول من ديسكورد. التفاصيل: ${cause}`
+  );
+}
+
 export interface VoiceSession {
   channel: VoiceBasedChannel;
   connection: VoiceConnection;
@@ -85,7 +92,16 @@ export async function joinAndCapture(args: {
     selfMute: true,
   });
 
-  await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+  try {
+    await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+  } catch (err) {
+    try {
+      connection.destroy();
+    } catch {
+      /* ignore */
+    }
+    throw voiceReadyError(err);
+  }
   log.info({ channel: channel.id }, "voice connection ready");
 
   attachSpeakingHandler(connection, channel, buffer, timeline);
