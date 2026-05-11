@@ -168,29 +168,29 @@ async function dispatch(msg: MsgIn): Promise<Omit<MsgOut, "id">> {
         return { type: "voice.ok", ok: true };
       }
       case "voice.leave": {
-        const ok = await leaveVoice(requirePage());
-        return { type: "voice.ok", ok };
+        const result = await leaveVoice(requirePage());
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.mute": {
         const mute = msg.value === "true" || msg.value === "1";
-        const ok = await toggleMute(requirePage(), mute);
-        return { type: "voice.ok", ok };
+        const result = await toggleMute(requirePage(), mute);
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.camera.start": {
-        const ok = await startCamera(requirePage());
-        return { type: "voice.ok", ok };
+        const result = await startCamera(requirePage());
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.camera.stop": {
-        const ok = await stopCamera(requirePage());
-        return { type: "voice.ok", ok };
+        const result = await stopCamera(requirePage());
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.share.start": {
-        const ok = await startScreenShare(requirePage());
-        return { type: "voice.ok", ok };
+        const result = await startScreenShare(requirePage());
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.share.stop": {
-        const ok = await stopScreenShare(requirePage());
-        return { type: "voice.ok", ok };
+        const result = await stopScreenShare(requirePage());
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
 
       default:
