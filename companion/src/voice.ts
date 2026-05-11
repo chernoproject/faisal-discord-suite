@@ -59,7 +59,12 @@ const SELECTORS = {
   ],
 };
 
-async function clickFirst(page: Page, selectors: string[], timeoutMs = 4000): Promise<boolean> {
+export interface VoiceActionResult {
+  ok: boolean;
+  error?: string;
+}
+
+async function clickFirst(page: Page, selectors: string[], timeoutMs = 4000): Promise<VoiceActionResult> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     for (const sel of selectors) {
@@ -67,7 +72,7 @@ async function clickFirst(page: Page, selectors: string[], timeoutMs = 4000): Pr
       try {
         if ((await loc.count()) > 0 && (await loc.isVisible())) {
           await loc.click({ timeout: 1500 });
-          return true;
+          return { ok: true };
         }
       } catch {
         /* try next */
@@ -75,7 +80,12 @@ async function clickFirst(page: Page, selectors: string[], timeoutMs = 4000): Pr
     }
     await page.waitForTimeout(200);
   }
-  return false;
+  const currentUrl = page.url();
+  return {
+    ok: false,
+    error:
+      `زر Discord المطلوب غير ظاهر. تأكد أن حساب الـ companion داخل الروم الصوتي وأن المتصفح مفتوح على الروم الصحيح. الصفحة الحالية: ${currentUrl}`,
+  };
 }
 
 export async function joinVoice(
@@ -100,48 +110,59 @@ export async function joinVoice(
   log.info("voice join requested (Discord may require user confirmation)");
 }
 
-export async function leaveVoice(page: Page): Promise<boolean> {
-  const ok = await clickFirst(page, SELECTORS.disconnectBtn);
-  log.info({ ok }, "leaveVoice");
-  return ok;
+export async function leaveVoice(page: Page): Promise<VoiceActionResult> {
+  const result = await clickFirst(page, SELECTORS.disconnectBtn);
+  log.info({ ok: result.ok }, "leaveVoice");
+  return result;
 }
 
-export async function toggleMute(page: Page, mute: boolean): Promise<boolean> {
+export async function toggleMute(page: Page, mute: boolean): Promise<VoiceActionResult> {
   const sel = mute ? SELECTORS.muteBtn : SELECTORS.unmuteBtn;
-  const ok = await clickFirst(page, sel);
-  log.info({ ok, mute }, "toggleMute");
-  return ok;
+  const result = await clickFirst(page, sel);
+  log.info({ ok: result.ok, mute }, "toggleMute");
+  return result;
 }
 
-export async function startCamera(page: Page): Promise<boolean> {
-  const ok = await clickFirst(page, SELECTORS.cameraBtn);
-  log.info({ ok }, "startCamera");
-  return ok;
+export async function startCamera(page: Page): Promise<VoiceActionResult> {
+  const result = await clickFirst(page, SELECTORS.cameraBtn);
+  log.info({ ok: result.ok }, "startCamera");
+  if (!result.ok) {
+    return {
+      ...result,
+      error:
+        "ما لقيت زر تشغيل الكاميرا في Discord. ادخل حساب الـ companion للروم الصوتي أولاً بـ /voice join، وتأكد أن Windows/Discord شايف كاميرا.",
+    };
+  }
+  return result;
 }
 
-export async function stopCamera(page: Page): Promise<boolean> {
-  const ok = await clickFirst(page, SELECTORS.cameraOffBtn);
-  log.info({ ok }, "stopCamera");
-  return ok;
+export async function stopCamera(page: Page): Promise<VoiceActionResult> {
+  const result = await clickFirst(page, SELECTORS.cameraOffBtn);
+  log.info({ ok: result.ok }, "stopCamera");
+  return result;
 }
 
-export async function startScreenShare(page: Page): Promise<boolean> {
+export async function startScreenShare(page: Page): Promise<VoiceActionResult> {
   const opened = await clickFirst(page, SELECTORS.shareScreenBtn);
-  if (!opened) {
+  if (!opened.ok) {
     log.warn("share screen button not found");
-    return false;
+    return {
+      ...opened,
+      error:
+        "ما لقيت زر مشاركة الشاشة في Discord. ادخل حساب الـ companion للروم الصوتي أولاً وتأكد أن نافذة Discord ظاهرة.",
+    };
   }
   // Picker shows up — pick entire screen tile then click Go Live.
   await page.waitForTimeout(800);
   await clickFirst(page, SELECTORS.shareEntireScreenTile, 2000);
   await page.waitForTimeout(300);
   const confirmed = await clickFirst(page, SELECTORS.shareConfirmBtn, 3000);
-  log.info({ confirmed }, "startScreenShare");
+  log.info({ confirmed: confirmed.ok }, "startScreenShare");
   return confirmed;
 }
 
-export async function stopScreenShare(page: Page): Promise<boolean> {
-  const ok = await clickFirst(page, SELECTORS.stopShareBtn);
-  log.info({ ok }, "stopScreenShare");
-  return ok;
+export async function stopScreenShare(page: Page): Promise<VoiceActionResult> {
+  const result = await clickFirst(page, SELECTORS.stopShareBtn);
+  log.info({ ok: result.ok }, "stopScreenShare");
+  return result;
 }
