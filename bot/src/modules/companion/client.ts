@@ -24,12 +24,12 @@ let ws: WebSocket | null = null;
 let connecting = false;
 let backoffMs = 1000;
 
-function isConfigured(): boolean {
+export function isCompanionConfigured(): boolean {
   return !!(env.COMPANION_WS_URL && env.COMPANION_AUTH_TOKEN);
 }
 
 function connect(): void {
-  if (connecting || ws || !isConfigured()) return;
+  if (connecting || ws || !isCompanionConfigured()) return;
   connecting = true;
   log.info({ url: env.COMPANION_WS_URL }, "connecting to companion");
   const sock = new WebSocket(env.COMPANION_WS_URL);
@@ -74,7 +74,7 @@ function rejectAll(err: Error): void {
 }
 
 export function ensureCompanion(): void {
-  if (!isConfigured()) return;
+  if (!isCompanionConfigured()) return;
   if (!ws) connect();
 }
 
@@ -91,8 +91,12 @@ export function sendCompanion(
   payload: Record<string, unknown> = {},
   timeoutMs = 20_000
 ): Promise<CompanionResponse> {
-  if (!isConfigured()) {
-    return Promise.reject(new Error("Companion not configured (COMPANION_WS_URL مفقود)."));
+  if (!isCompanionConfigured()) {
+    return Promise.reject(
+      new Error(
+        "Companion غير مضبوط — عبّ COMPANION_WS_URL و COMPANION_AUTH_TOKEN في bot/.env. إذا عندك إعدادات companion فقط، انسخ BOT_WS_URL/BOT_AUTH_TOKEN إلى bot/.env أو استخدم COMPANION_WS_URL=ws://localhost:8788."
+      )
+    );
   }
   ensureCompanion();
   if (!ws || ws.readyState !== WebSocket.OPEN) {

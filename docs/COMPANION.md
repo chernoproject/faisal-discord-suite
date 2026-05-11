@@ -101,6 +101,8 @@ COMPANION_WS_URL=ws://localhost:8788
 COMPANION_AUTH_TOKEN=نفس-القيمة-في-companion-env
 ```
 
+> مهم: قيم `BOT_WS_URL` و `BOT_AUTH_TOKEN` في `companion\.env` تخص تطبيق الـ companion فقط. البوت يقرأ من `bot\.env`؛ لذلك لازم تضع `COMPANION_WS_URL` و `COMPANION_AUTH_TOKEN` هناك. لو نسخت `BOT_WS_URL` و `BOT_AUTH_TOKEN` إلى `bot\.env` بالخطأ، البوت سيحاول استنتاج رابط الـ companion تلقائياً بتحويل `ws://localhost:8787` إلى `ws://localhost:8788`.
+
 > لو الـ companion على جهاز ثاني، استبدل `localhost` بـ IP الجهاز وافتح المنفذ 8788 في Firewall.
 
 ## 6) شغّل الـ Companion
