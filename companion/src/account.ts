@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import type { Page } from "playwright-core";
+import { cfg } from "./config.js";
 import { logger } from "./logger.js";
 
 const log = logger.child({ mod: "account" });
@@ -24,19 +25,22 @@ interface ApiContext {
 }
 
 async function getApiContext(page: Page): Promise<ApiContext> {
-  // The page already injected the token via localStorage; pick it up.
-  const data = await page.evaluate(() => {
-    const w = window as unknown as {
-      localStorage: Storage;
-      navigator: { language: string };
-    };
-    const tok = w.localStorage.getItem("token") ?? "";
-    return {
-      token: tok.replace(/^"|"$/g, ""),
-      locale: w.navigator.language || "en-US",
-    };
-  });
-  if (!data.token) throw new Error("no token available in page localStorage");
+  const data = await page
+    .evaluate(() => {
+      let token = "";
+      try {
+        token = window.localStorage?.getItem("token") ?? "";
+      } catch {
+        token = "";
+      }
+      return {
+        token: token.replace(/^"|"$/g, ""),
+        locale: window.navigator.language || "en-US",
+      };
+    })
+    .catch(() => ({ token: "", locale: "en-US" }));
+  const token = data.token || cfg.DISCORD_USER_TOKEN;
+  if (!token) throw new Error("no token available for Discord API requests");
 
   // X-Super-Properties is required to avoid most "Invalid request" responses.
   // We use a sane Chrome-on-Windows default that matches our headless context.
@@ -60,7 +64,7 @@ async function getApiContext(page: Page): Promise<ApiContext> {
     })
   ).toString("base64");
 
-  return { token: data.token, superProperties, locale: data.locale };
+  return { token, superProperties, locale: data.locale };
 }
 
 async function apiFetch(
