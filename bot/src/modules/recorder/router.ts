@@ -22,6 +22,7 @@ import { editorPanel } from "./editorRouter.js";
 import { Palette } from "../../utils/colors.js";
 
 const log = logger.child({ mod: "rec-router" });
+const STARTING = new Set<string>();
 
 export async function recordRouter(interaction: Interaction): Promise<void> {
   if (!interaction.guild) return;
@@ -66,17 +67,27 @@ export async function recordRouter(interaction: Interaction): Promise<void> {
 
 async function startBtn(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const member = interaction.member as GuildMember | null;
   const channel = await resolveTargetChannel(interaction);
   if (!channel) {
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [errorEmbed("ما لقيت روم صوتي — حدد الروم من /setup أو ادخل أنت روم صوتي قبل ما تضغط.\nNo voice channel found — set one in /setup or join a voice channel first.")],
-      flags: MessageFlags.Ephemeral,
     });
     return;
   }
+  const guildId = interaction.guild.id;
+  if (STARTING.has(guildId)) {
+    await interaction.editReply({
+      embeds: [errorEmbed("جاري بدء التسجيل الآن — انتظر ثواني ثم جرّب مرة ثانية | Recording is already starting.")],
+    });
+    return;
+  }
+  STARTING.add(guildId);
   try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.editReply({
+      embeds: [buildEmbed({ description: `جارٍ دخول <#${channel.id}> وبدء التسجيل… | Joining <#${channel.id}> and starting recording…`, color: Palette.warn })],
+    });
     await recordingManager.start({
       channel,
       startedBy: member?.id ?? interaction.user.id,
@@ -96,6 +107,8 @@ async function startBtn(interaction: ButtonInteraction): Promise<void> {
     log.error({ err }, "start failed");
     const msg = err instanceof Error ? err.message : L.unknownError;
     await interaction.editReply({ embeds: [errorEmbed(msg)] });
+  } finally {
+    STARTING.delete(guildId);
   }
 }
 

@@ -59,25 +59,28 @@ const QUALITY = {
 const MAC = {
   // Menu bar
   menuBarH: 25,
-  menuBarBg: "rgba(30, 30, 30, 0.85)",
-  menuBarText: "#cccccc",
-  menuBarTextDim: "#888888",
+  menuBarBg: "rgba(247, 247, 248, 0.74)",
+  menuBarText: "#161617",
+  menuBarTextDim: "#4c4c4f",
   // Desktop wallpaper
-  wallA: "#1b1135",
-  wallB: "#0a0a1a",
-  wallC: "#1a0a2e",
+  wallA: "#f6c1d0",
+  wallB: "#8577f4",
+  wallC: "#4f8ff8",
+  wallD: "#101628",
   // Window chrome
-  titleBarH: 38,
-  titleBarBg: "#202225",
+  titleBarH: 34,
+  titleBarBg: "#2b2d31",
   dotClose: "#ff5f57",
   dotMinimize: "#febc2e",
   dotMaximize: "#28c840",
-  winRadius: 10,
-  winShadow: "rgba(0, 0, 0, 0.65)",
+  winRadius: 13,
+  winShadow: "rgba(0, 0, 0, 0.42)",
 } as const;
 
 const DC = {
   // Discord colors
+  serverRailBg: "#1e1f22",
+  serverRailW: 72,
   sidebarBg: "#2b2d31",
   sidebarW: 240,
   channelText: "#949ba4",
@@ -100,6 +103,7 @@ const DC = {
   voiceSpeaking: "#23a559",
   voiceSpeakingBg: "rgba(35, 165, 89, 0.12)",
   userCardBg: "#2b2d31",
+  userCardBgAlt: "#25262b",
   statusGreen: "#23a559",
   statusRed: "#f23f43",
   blurple: "#5865f2",
@@ -321,37 +325,33 @@ interface FrameArgs {
 function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   const s = W / 1920;
 
-  // ── 1. macOS Desktop Wallpaper ─────────────────────────
   const wallGrad = ctx.createLinearGradient(0, 0, W, H);
   wallGrad.addColorStop(0, MAC.wallA);
-  wallGrad.addColorStop(0.4, MAC.wallB);
-  wallGrad.addColorStop(0.7, MAC.wallC);
-  wallGrad.addColorStop(1, MAC.wallB);
+  wallGrad.addColorStop(0.34, MAC.wallB);
+  wallGrad.addColorStop(0.68, MAC.wallC);
+  wallGrad.addColorStop(1, MAC.wallD);
   ctx.fillStyle = wallGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle aurora-like glow blobs (like macOS Sequoia wallpaper)
   ctx.save();
-  ctx.globalAlpha = 0.15;
-  const radGrad1 = ctx.createRadialGradient(W * 0.3, H * 0.2, 0, W * 0.3, H * 0.2, H * 0.6);
-  radGrad1.addColorStop(0, "#6b2fa0");
+  ctx.globalAlpha = 0.38;
+  const radGrad1 = ctx.createRadialGradient(W * 0.22, H * 0.08, 0, W * 0.22, H * 0.08, H * 0.72);
+  radGrad1.addColorStop(0, "#ffe7ef");
   radGrad1.addColorStop(1, "transparent");
   ctx.fillStyle = radGrad1;
   ctx.fillRect(0, 0, W, H);
-  const radGrad2 = ctx.createRadialGradient(W * 0.75, H * 0.7, 0, W * 0.75, H * 0.7, H * 0.5);
-  radGrad2.addColorStop(0, "#1a4a8a");
+  const radGrad2 = ctx.createRadialGradient(W * 0.78, H * 0.72, 0, W * 0.78, H * 0.72, H * 0.58);
+  radGrad2.addColorStop(0, "#82d4ff");
   radGrad2.addColorStop(1, "transparent");
   ctx.fillStyle = radGrad2;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // ── 2. macOS Menu Bar ──────────────────────────────────
   const mbH = Math.round(MAC.menuBarH * s);
   ctx.save();
   ctx.fillStyle = MAC.menuBarBg;
   ctx.fillRect(0, 0, W, mbH);
-  // Bottom border
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.strokeStyle = "rgba(255,255,255,0.26)";
   ctx.lineWidth = 0.5;
   ctx.beginPath(); ctx.moveTo(0, mbH); ctx.lineTo(W, mbH); ctx.stroke();
   ctx.restore();
@@ -361,11 +361,9 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   ctx.fillStyle = MAC.menuBarText;
   ctx.font = `${Math.round(14 * s)}px BotUI`;
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillText("", Math.round(14 * s), mbH / 2);
-  // App name
+  ctx.fillText("●", Math.round(14 * s), mbH / 2);
   ctx.font = `bold ${Math.round(12.5 * s)}px BotUI`;
-  ctx.fillText("Discord", Math.round(34 * s), mbH / 2);
-  // Menu items
+  ctx.fillText("Discord", Math.round(36 * s), mbH / 2);
   ctx.font = `${Math.round(12 * s)}px BotUI`;
   ctx.fillStyle = MAC.menuBarText;
   const menuItems = ["File", "Edit", "View", "Window", "Help"];
@@ -376,7 +374,6 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   }
   ctx.restore();
 
-  // Right side — time, wifi, battery
   ctx.save();
   ctx.fillStyle = MAC.menuBarText;
   ctx.font = `${Math.round(12 * s)}px BotUI`;
@@ -385,7 +382,7 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
   ctx.fillText(timeStr, W - Math.round(14 * s), mbH / 2);
   ctx.fillStyle = MAC.menuBarTextDim;
-  ctx.fillText("🔋 ⚡ 📶", W - Math.round(80 * s), mbH / 2);
+  ctx.fillText("▰ 􀙇 􀙇", W - Math.round(80 * s), mbH / 2);
   ctx.restore();
 
   // ── 3. Discord Window ──────────────────────────────────
@@ -415,7 +412,6 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   const tbH = Math.round(MAC.titleBarH * s);
   ctx.fillStyle = MAC.titleBarBg;
   ctx.fillRect(winX, winY, winW, tbH);
-  // Bottom border
   ctx.strokeStyle = "rgba(0,0,0,0.3)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(winX, winY + tbH); ctx.lineTo(winX + winW, winY + tbH); ctx.stroke();
@@ -429,21 +425,41 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   drawCircle(ctx, dotStart + dotGap, dotY, dotR, MAC.dotMinimize);
   drawCircle(ctx, dotStart + dotGap * 2, dotY, dotR, MAC.dotMaximize);
 
-  // Window title (center)
-  ctx.fillStyle = "#999999";
+  ctx.fillStyle = "#b5bac1";
   ctx.font = `${Math.round(12.5 * s)}px BotUI`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("Discord", winX + winW / 2, dotY);
 
-  // ── 3b. Sidebar ────────────────────────────────────────
+  const railW = Math.round(DC.serverRailW * s);
+  const railX = winX;
+  const railY = winY + tbH;
+  const railH = winH - tbH;
+  ctx.fillStyle = DC.serverRailBg;
+  ctx.fillRect(railX, railY, railW, railH);
+
+  const serverIconX = railX + railW / 2;
+  let serverIconY = railY + Math.round(34 * s);
+  drawCircle(ctx, serverIconX, serverIconY, Math.round(22 * s), DC.blurple);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${Math.round(18 * s)}px BotUI`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("✦", serverIconX, serverIconY);
+  serverIconY += Math.round(54 * s);
+  for (let i = 0; i < 4; i++) {
+    drawCircle(ctx, serverIconX, serverIconY, Math.round(20 * s), "#313338");
+    ctx.fillStyle = "#dbdee1";
+    ctx.font = `bold ${Math.round(13 * s)}px BotUI`;
+    ctx.fillText(String(i + 1), serverIconX, serverIconY);
+    serverIconY += Math.round(48 * s);
+  }
+
   const sbW = Math.round(DC.sidebarW * s);
-  const sbX = winX;
+  const sbX = winX + railW;
   const sbY = winY + tbH;
   const sbH = winH - tbH;
 
   ctx.fillStyle = DC.sidebarBg;
   ctx.fillRect(sbX, sbY, sbW, sbH);
-  // Right border
   ctx.strokeStyle = "rgba(0,0,0,0.2)";
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(sbX + sbW, sbY); ctx.lineTo(sbX + sbW, sbY + sbH); ctx.stroke();
@@ -452,7 +468,7 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   ctx.fillStyle = DC.headerText;
   ctx.font = `bold ${Math.round(14 * s)}px BotUI`;
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillText("✦ Server", sbX + Math.round(16 * s), sbY + Math.round(20 * s));
+  ctx.fillText("Faisal Server", sbX + Math.round(16 * s), sbY + Math.round(22 * s));
 
   // Channels
   const chY = sbY + Math.round(50 * s);
@@ -518,7 +534,7 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   // ── 3c. Main Content Area ──────────────────────────────
   const mainX = sbX + sbW;
   const mainY = sbY;
-  const mainW = winW - sbW;
+  const mainW = winW - railW - sbW;
   const mainH = sbH;
 
   ctx.fillStyle = DC.mainBg;
@@ -544,8 +560,7 @@ function drawFrame(ctx: Ctx, W: number, H: number, args: FrameArgs): void {
   ctx.fillText(`${args.users.length} participants`, mainX + mainW - Math.round(16 * s), mainY + hdrH / 2);
   ctx.textAlign = "left";
 
-  // Split: voice grid (left ~65%) + chat (right ~35%)
-  const chatPanelW = Math.round(mainW * 0.32);
+  const chatPanelW = Math.round(mainW * 0.31);
   const gridW = mainW - chatPanelW;
   const contentY = mainY + hdrH;
   const contentH = mainH - hdrH;
@@ -576,10 +591,10 @@ function drawVoiceGrid(
   const n = Math.max(1, users.length);
   const cols = n <= 2 ? n : n <= 4 ? 2 : n <= 9 ? 3 : 4;
   const rows = Math.ceil(n / cols);
-  const pad = Math.round(12 * s);
+  const pad = Math.round(18 * s);
   const cardW = (w - pad * (cols + 1)) / cols;
   const cardH = (h - pad * (rows + 1)) / rows;
-  const cardR = Math.round(8 * s);
+  const cardR = Math.round(14 * s);
 
   users.forEach((u, i) => {
     const r = Math.floor(i / cols);
@@ -590,46 +605,42 @@ function drawVoiceGrid(
     const level = args.envelope[u.userId] ?? 0;
     const st = args.status[u.userId] ?? emptyStatus();
 
-    // Card background (Discord-style dark tile)
     ctx.save();
-    ctx.fillStyle = isSpeaking ? DC.voiceSpeakingBg : DC.userCardBg;
+    const tile = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
+    tile.addColorStop(0, isSpeaking ? "#26352c" : DC.userCardBg);
+    tile.addColorStop(1, DC.userCardBgAlt);
+    ctx.fillStyle = tile;
     roundRect(ctx, cx, cy, cardW, cardH, cardR);
     ctx.fill();
+    ctx.strokeStyle = isSpeaking ? "rgba(35,165,89,0.9)" : "rgba(255,255,255,0.055)";
+    ctx.lineWidth = isSpeaking ? Math.round(3 * s) : 1;
+    ctx.stroke();
     ctx.restore();
 
-    // Speaking border
     if (isSpeaking) {
       ctx.save();
-      ctx.lineWidth = Math.round(2.5 * s);
+      ctx.lineWidth = Math.round(2 * s);
       ctx.strokeStyle = DC.voiceSpeaking;
       ctx.shadowColor = DC.voiceSpeaking;
-      ctx.shadowBlur = Math.round(8 * s) + level * Math.round(12 * s);
-      roundRect(ctx, cx, cy, cardW, cardH, cardR);
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      ctx.save();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.shadowBlur = Math.round(10 * s) + level * Math.round(18 * s);
       roundRect(ctx, cx, cy, cardW, cardH, cardR);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Avatar
-    const avSize = Math.min(cardW * 0.5, cardH * 0.5);
+    const avSize = Math.min(cardW * 0.42, cardH * 0.48);
     const ax = cx + (cardW - avSize) / 2;
-    const ay = cy + cardH * 0.08;
+    const ay = cy + cardH * 0.12;
 
-    // Avatar circle bg
     ctx.save();
-    ctx.fillStyle = "#36393f";
+    ctx.shadowColor = "rgba(0,0,0,0.34)";
+    ctx.shadowBlur = Math.round(10 * s);
+    ctx.fillStyle = "#313338";
     ctx.beginPath();
-    ctx.arc(ax + avSize / 2, ay + avSize / 2, avSize / 2 + Math.round(2 * s), 0, Math.PI * 2);
+    ctx.arc(ax + avSize / 2, ay + avSize / 2, avSize / 2 + Math.round(3 * s), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // Avatar image
     ctx.save();
     ctx.beginPath();
     ctx.arc(ax + avSize / 2, ay + avSize / 2, avSize / 2, 0, Math.PI * 2);
@@ -648,7 +659,6 @@ function drawVoiceGrid(
     }
     ctx.restore();
 
-    // Speaking ring on avatar
     if (isSpeaking) {
       ctx.save();
       ctx.lineWidth = Math.round(3 * s);
@@ -661,39 +671,37 @@ function drawVoiceGrid(
       ctx.restore();
     }
 
-    // Username
     ctx.save();
     ctx.fillStyle = isSpeaking ? "#ffffff" : DC.voiceUser;
-    const nameSize = Math.max(11, Math.round(cardH * 0.1));
+    const nameSize = Math.max(12, Math.round(cardH * 0.095));
     ctx.font = `600 ${nameSize}px BotUI`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(u.username, cx + cardW / 2, cy + cardH * 0.74, cardW - Math.round(12 * s));
+    ctx.fillText(u.username, cx + cardW / 2, cy + cardH * 0.73, cardW - Math.round(18 * s));
     ctx.restore();
 
-    // Status indicators (muted, camera, screen share)
-    const iconSize = Math.round(16 * s);
-    const icons: { emoji: string; color: string }[] = [];
-    if (st.selfMute || st.serverMute) icons.push({ emoji: "🔇", color: DC.statusRed });
-    if (st.camera) icons.push({ emoji: "📹", color: DC.blurple });
-    if (st.share) icons.push({ emoji: "🖥️", color: Palette.shareOn });
+    const iconSize = Math.round(18 * s);
+    const icons: { label: string; color: string }[] = [];
+    if (st.selfMute || st.serverMute) icons.push({ label: "M", color: DC.statusRed });
+    if (st.camera) icons.push({ label: "V", color: DC.blurple });
+    if (st.share) icons.push({ label: "S", color: Palette.shareOn });
 
     if (icons.length > 0) {
-      const totalW = icons.length * iconSize + (icons.length - 1) * Math.round(4 * s);
+      const totalW = icons.length * iconSize + (icons.length - 1) * Math.round(6 * s);
       let ix = cx + (cardW - totalW) / 2;
       const iy = cy + cardH * 0.88;
       for (const ic of icons) {
         ctx.save();
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        roundRect(ctx, ix - Math.round(2 * s), iy - iconSize / 2 - Math.round(2 * s), iconSize + Math.round(4 * s), iconSize + Math.round(4 * s), Math.round(4 * s));
+        ctx.fillStyle = ic.color;
+        roundRect(ctx, ix, iy - iconSize / 2, iconSize, iconSize, iconSize / 2);
         ctx.fill();
         ctx.restore();
         ctx.save();
-        ctx.fillStyle = ic.color;
-        ctx.font = `${Math.round(iconSize * 0.7)}px BotUI`;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${Math.round(iconSize * 0.56)}px BotUI`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(ic.emoji, ix + iconSize / 2, iy);
+        ctx.fillText(ic.label, ix + iconSize / 2, iy);
         ctx.restore();
-        ix += iconSize + Math.round(4 * s);
+        ix += iconSize + Math.round(6 * s);
       }
     }
   });
