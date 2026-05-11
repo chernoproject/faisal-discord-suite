@@ -7,7 +7,11 @@ import {
 import type { SlashCommand } from "../client.js";
 import { errorEmbed, successEmbed, buildEmbed } from "../ui/embeds.js";
 import { env } from "../config/env.js";
-import { sendCompanion, isCompanionReady } from "../modules/companion/client.js";
+import {
+  sendCompanion,
+  isCompanionConfigured,
+  isCompanionReady,
+} from "../modules/companion/client.js";
 import { Palette } from "../utils/colors.js";
 
 const STATUS_CHOICES = [
@@ -123,9 +127,13 @@ export const accountCommand: SlashCommand = {
     try {
       switch (sub) {
         case "status": {
-          if (!env.COMPANION_WS_URL) {
+          if (!isCompanionConfigured()) {
             await interaction.editReply({
-              embeds: [errorEmbed("Companion غير مضبوط — عبّ COMPANION_WS_URL في bot/.env")],
+              embeds: [
+                errorEmbed(
+                  "Companion غير مضبوط — عبّ COMPANION_WS_URL و COMPANION_AUTH_TOKEN في bot/.env.\nمثال: COMPANION_WS_URL=ws://localhost:8788\nCOMPANION_AUTH_TOKEN=نفس BOT_AUTH_TOKEN في companion/.env"
+                ),
+              ],
             });
             return;
           }
