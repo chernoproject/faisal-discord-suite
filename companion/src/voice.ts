@@ -18,6 +18,12 @@ const SELECTORS = {
 
   // In-call control buttons live inside [aria-label="Voice Connected"] tray
   // or the channel tile when expanded. We try multiple matches.
+  connected: [
+    '[aria-label="Voice Connected"]',
+    '[aria-label="متصل بالصوت"]',
+    'button[aria-label="Disconnect"]',
+    'button[aria-label="فصل"]',
+  ],
   shareScreenBtn: [
     'button[aria-label="Share Your Screen"]',
     'button[aria-label="مشاركة شاشتك"]',
@@ -92,22 +98,42 @@ export async function joinVoice(
   page: Page,
   channelId = cfg.TARGET_VOICE_CHANNEL_ID,
   guildId = cfg.TARGET_GUILD_ID
-): Promise<void> {
+): Promise<VoiceActionResult> {
   log.info({ channelId, guildId }, "joining voice channel");
   const url = `https://discord.com/channels/${guildId}/${channelId}`;
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  // Discord auto-joins voice when you click the channel link in the sidebar.
-  // Navigating to the URL only opens the chat view; we still need to click it.
-  await page.waitForTimeout(800);
-  const link = page.locator(SELECTORS.channelLink(channelId)).first();
-  try {
-    if ((await link.count()) > 0) {
-      await link.dblclick({ timeout: 3000 });
-    }
-  } catch (err) {
-    log.debug({ err }, "channel link dblclick fallback");
+
+  const joinedBeforeClick = await isVoiceConnected(page, 1500);
+  if (joinedBeforeClick) return { ok: true };
+
+  const linkResult = await clickFirst(page, [SELECTORS.channelLink(channelId)], 8000);
+  if (!linkResult.ok) {
+    return {
+      ok: false,
+      error:
+        `ما لقيت الروم الصوتي في Discord. تأكد أن TARGET_GUILD_ID و TARGET_VOICE_CHANNEL_ID صحيحة وأن حساب الـ companion داخل السيرفر. الصفحة الحالية: ${page.url()}`,
+    };
   }
-  log.info("voice join requested (Discord may require user confirmation)");
+
+  const joinedAfterClick = await isVoiceConnected(page, 10_000);
+  if (!joinedAfterClick) {
+    try {
+      await page.locator(SELECTORS.channelLink(channelId)).first().dblclick({ timeout: 3000 });
+    } catch (err) {
+      log.debug({ err }, "channel link dblclick fallback");
+    }
+  }
+  const joinedAfterFallback = await isVoiceConnected(page, 10_000);
+  if (!joinedAfterFallback) {
+    return {
+      ok: false,
+      error:
+        "تم الضغط على الروم لكن Discord ما أكد الاتصال الصوتي. افتح نافذة الـ companion وتأكد من عدم وجود نافذة تأكيد/صلاحيات، وأن الحساب غير مقيد من دخول الروم.",
+    };
+  }
+
+  log.info("voice join confirmed");
+  return { ok: true };
 }
 
 export async function leaveVoice(page: Page): Promise<VoiceActionResult> {
@@ -165,4 +191,20 @@ export async function stopScreenShare(page: Page): Promise<VoiceActionResult> {
   const result = await clickFirst(page, SELECTORS.stopShareBtn);
   log.info({ ok: result.ok }, "stopScreenShare");
   return result;
+}
+
+async function isVoiceConnected(page: Page, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const sel of SELECTORS.connected) {
+      const loc = page.locator(sel).first();
+      try {
+        if ((await loc.count()) > 0 && (await loc.isVisible())) return true;
+      } catch {
+        /* try next */
+      }
+    }
+    await page.waitForTimeout(250);
+  }
+  return false;
 }
