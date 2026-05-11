@@ -164,8 +164,8 @@ async function dispatch(msg: MsgIn): Promise<Omit<MsgOut, "id">> {
 
       // ─── voice ───
       case "voice.join": {
-        await joinVoice(requirePage(), msg.channelId, msg.guildId);
-        return { type: "voice.ok", ok: true };
+        const result = await joinVoice(requirePage(), msg.channelId, msg.guildId);
+        return { type: "voice.ok", ok: result.ok, error: result.error };
       }
       case "voice.leave": {
         const result = await leaveVoice(requirePage());

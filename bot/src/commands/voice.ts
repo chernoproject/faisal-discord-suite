@@ -57,7 +57,7 @@ export const voiceCommand: SlashCommand = {
         }
         const r = await sendCompanion("voice.join", payload);
         await interaction.editReply({
-          embeds: [r.ok ? successEmbed("تم طلب الانضمام للروم.") : errorEmbed(r.error ?? "فشل")],
+          embeds: [r.ok ? successEmbed("تم دخول حساب الـ companion للروم.") : errorEmbed(r.error ?? "فشل")],
         });
       } else if (sub === "leave") {
         const r = await sendCompanion("voice.leave");
