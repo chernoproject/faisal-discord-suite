@@ -24,12 +24,16 @@ function buildFfmpegArgs(outFile: string): string[] {
   const v = cfg.CAPTURE_WIDTH;
   const h = cfg.CAPTURE_HEIGHT;
   const fps = String(cfg.CAPTURE_FPS);
-  const common = [
+  const commonVideo = [
     "-c:v", "libx264",
     "-preset", "veryfast",
     "-pix_fmt", "yuv420p",
+  ];
+  const commonAudio = [
     "-c:a", "aac",
     "-b:a", "128k",
+  ];
+  const commonEnd = [
     "-movflags", "+faststart",
     outFile,
   ];
@@ -44,6 +48,7 @@ function buildFfmpegArgs(outFile: string): string[] {
       "-video_size", `${v}x${h}`,
       "-offset_x", String(cfg.WINDOWS_GRAB_X),
       "-offset_y", String(cfg.WINDOWS_GRAB_Y),
+      "-draw_mouse", "1",
       "-i", "desktop",
     ];
     if (audioDevice) {
@@ -53,7 +58,7 @@ function buildFfmpegArgs(outFile: string): string[] {
         "-i", `audio=${audioDevice}`
       );
     }
-    return args.concat(common);
+    return args.concat(commonVideo, audioDevice ? commonAudio : [], commonEnd);
   }
 
   if (process.platform === "darwin") {
@@ -63,7 +68,9 @@ function buildFfmpegArgs(outFile: string): string[] {
       "-framerate", fps,
       "-video_size", `${v}x${h}`,
       "-i", "1:0",
-      ...common,
+      ...commonVideo,
+      ...commonAudio,
+      ...commonEnd,
     ];
   }
 
@@ -80,7 +87,9 @@ function buildFfmpegArgs(outFile: string): string[] {
     "-f", "pulse",
     "-ac", "2",
     "-i", "default",
-    ...common,
+    ...commonVideo,
+    ...commonAudio,
+    ...commonEnd,
   ];
 }
 

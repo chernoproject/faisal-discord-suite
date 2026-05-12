@@ -36,7 +36,10 @@ export const voiceCommand: SlashCommand = {
         .addBooleanOption((o) =>
           o.setName("value").setDescription("true = كتم / false = فك").setRequired(true)
         )
-    ),
+    )
+    .addSubcommand((s) => s.setName("record_start").setDescription("بدء تسجيل شاشة/صوت Windows من companion بدون دخول تلقائي للروم"))
+    .addSubcommand((s) => s.setName("record_stop").setDescription("إيقاف تسجيل شاشة/صوت Windows من companion"))
+    .addSubcommand((s) => s.setName("record_status").setDescription("حالة تسجيل شاشة/صوت Windows من companion")),
   async execute(interaction: ChatInputCommandInteraction) {
     if (env.OWNER_ID && interaction.user.id !== env.OWNER_ID) {
       await interaction.reply({
@@ -69,6 +72,37 @@ export const voiceCommand: SlashCommand = {
         const r = await sendCompanion("voice.mute", { value: v ? "true" : "false" });
         await interaction.editReply({
           embeds: [r.ok ? successEmbed(v ? "تم الكتم." : "تم فك الكتم.") : errorEmbed(r.error ?? "فشل")],
+        });
+      } else if (sub === "record_start") {
+        const r = await sendCompanion("capture.start", { label: `discord-${interaction.guildId ?? "guild"}` });
+        const data = r.data as { outFile?: string } | undefined;
+        await interaction.editReply({
+          embeds: [
+            r.ok
+              ? successEmbed(`بدأ تسجيل شاشة/صوت Windows من companion.\nالملف | File: ${data?.outFile ?? "غير معروف"}`)
+              : errorEmbed(r.error ?? "فشل بدء التسجيل"),
+          ],
+        });
+      } else if (sub === "record_stop") {
+        const r = await sendCompanion("capture.stop", {}, 30_000);
+        const data = r.data as { outFile?: string; durationMs?: number } | null | undefined;
+        await interaction.editReply({
+          embeds: [
+            r.ok && data
+              ? successEmbed(`تم إيقاف تسجيل companion.\nالملف | File: ${data.outFile}\nالمدة | Duration: ${Math.round((data.durationMs ?? 0) / 1000)}s`)
+              : errorEmbed(r.error ?? "ما فيه تسجيل companion شغال"),
+          ],
+        });
+      } else if (sub === "record_status") {
+        const r = await sendCompanion("capture.status");
+        const data = r.data as { capturing?: boolean; info?: { outFile?: string; startedAt?: number } | null } | undefined;
+        const elapsed = data?.info?.startedAt ? Math.round((Date.now() - data.info.startedAt) / 1000) : 0;
+        await interaction.editReply({
+          embeds: [
+            r.ok
+              ? successEmbed(data?.capturing ? `تسجيل companion شغال.\nالملف | File: ${data.info?.outFile ?? "غير معروف"}\nالمدة | Duration: ${elapsed}s` : "تسجيل companion غير شغال.")
+              : errorEmbed(r.error ?? "فشل جلب الحالة"),
+          ],
         });
       }
     } catch (err) {

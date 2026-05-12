@@ -2,7 +2,7 @@ import "dotenv/config";
 import { z } from "zod";
 
 const schema = z.object({
-  DISCORD_USER_TOKEN: z.string().min(20, "DISCORD_USER_TOKEN مفقود — راجع companion/.env"),
+  DISCORD_USER_TOKEN: z.string().default(""),
   TARGET_GUILD_ID: z.string().min(5),
   TARGET_VOICE_CHANNEL_ID: z.string().min(5),
 
@@ -27,6 +27,10 @@ const schema = z.object({
 
   // Browser
   BROWSER_PROFILE_DIR: z.string().default("./companion-profile"),
+  BROWSER_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   HEADLESS: z
     .enum(["true", "false"])
     .default("false")
@@ -41,6 +45,11 @@ const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
   console.error("❌ companion config invalid:");
   for (const i of parsed.error.issues) console.error(`  • ${i.path.join(".")}: ${i.message}`);
+  process.exit(1);
+}
+if (parsed.data.BROWSER_ENABLED && parsed.data.DISCORD_USER_TOKEN.length < 20) {
+  console.error("❌ companion config invalid:");
+  console.error("  • DISCORD_USER_TOKEN: DISCORD_USER_TOKEN مفقود — راجع companion/.env أو استخدم BROWSER_ENABLED=false لتسجيل الشاشة فقط");
   process.exit(1);
 }
 export const cfg = parsed.data;

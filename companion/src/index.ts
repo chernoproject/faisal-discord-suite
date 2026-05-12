@@ -18,6 +18,11 @@ async function main(): Promise<void> {
   // Start WS bridge first so the bot can connect even while the browser is loading.
   startBridge();
 
+  if (!cfg.BROWSER_ENABLED) {
+    logger.info("companion ready — screen capture only");
+    return;
+  }
+
   const { page } = await launchDiscord();
   attachPage(page);
   logger.info("companion ready — discord web loaded");
