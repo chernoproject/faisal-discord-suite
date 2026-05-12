@@ -7,7 +7,7 @@ import {
   entersState,
   type VoiceConnection,
 } from "@discordjs/voice";
-import type { VoiceBasedChannel, GuildMember } from "discord.js";
+import { PermissionsBitField, type VoiceBasedChannel, type GuildMember } from "discord.js";
 import prism from "prism-media";
 import { logger } from "../../utils/logger.js";
 import { RollingBuffer } from "./rollingBuffer.js";
@@ -79,6 +79,26 @@ function attachSpeakingHandler(
   });
 }
 
+async function moveBotToRecordingChannel(channel: VoiceBasedChannel): Promise<void> {
+  const me = channel.guild.members.me ?? await channel.guild.members.fetchMe();
+  const permissions = channel.permissionsFor(me);
+  const missing = permissions?.missing([
+    PermissionsBitField.Flags.ViewChannel,
+    PermissionsBitField.Flags.Connect,
+    PermissionsBitField.Flags.Speak,
+  ]) ?? [];
+  if (missing.length > 0) {
+    throw new Error(`صلاحيات البوت ناقصة في روم التسجيل: ${missing.join(", ")} | Missing bot permissions in recording channel.`);
+  }
+  if (me.voice.channelId === channel.id) return;
+  try {
+    await me.voice.setChannel(channel, "Starting recording");
+    log.info({ guild: channel.guildId, channel: channel.id }, "bot member moved to recording channel");
+  } catch (err) {
+    log.warn({ err, guild: channel.guildId, channel: channel.id }, "could not move bot member before recording join");
+  }
+}
+
 /**
  * Join a voice channel and start receiving audio from every speaker.
  * Subscribes to receiver "speaking" events and pipes decoded PCM into the rolling buffer.
@@ -91,6 +111,7 @@ export async function joinAndCapture(args: {
   selfDeaf?: boolean;
 }): Promise<VoiceSession> {
   const { channel, buffer, timeline } = args;
+  await moveBotToRecordingChannel(channel);
   const existing = getVoiceConnection(channel.guildId);
   if (existing) {
     try {

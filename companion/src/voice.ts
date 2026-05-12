@@ -99,9 +99,30 @@ export async function joinVoice(
   channelId = cfg.TARGET_VOICE_CHANNEL_ID,
   guildId = cfg.TARGET_GUILD_ID
 ): Promise<VoiceActionResult> {
+  return withTimeout(
+    joinVoiceInner(page, channelId, guildId),
+    35_000,
+    `انتهت مهلة محاولة دخول الروم الصوتي في Discord. افتح نافذة الـ companion وتأكد أن Discord مستجيب وأن الحساب يستطيع رؤية الروم. الصفحة الحالية: ${page.url()}`
+  );
+}
+
+async function joinVoiceInner(
+  page: Page,
+  channelId: string,
+  guildId: string
+): Promise<VoiceActionResult> {
   log.info({ channelId, guildId }, "joining voice channel");
   const url = `https://discord.com/channels/${guildId}/${channelId}`;
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15_000 });
+  } catch (err) {
+    log.warn({ err, url, currentUrl: page.url() }, "discord voice channel navigation timed out");
+    await page.evaluate((target) => {
+      window.location.assign(target);
+    }, url);
+    await page.waitForTimeout(2_500);
+  }
+  log.info({ currentUrl: page.url() }, "discord voice channel page opened");
 
   const joinedBeforeClick = await isVoiceConnected(page, 1500);
   if (joinedBeforeClick) return { ok: true };
@@ -134,6 +155,24 @@ export async function joinVoice(
 
   log.info("voice join confirmed");
   return { ok: true };
+}
+
+async function withTimeout(
+  action: Promise<VoiceActionResult>,
+  timeoutMs: number,
+  error: string
+): Promise<VoiceActionResult> {
+  let timeout: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      action,
+      new Promise<VoiceActionResult>((resolve) => {
+        timeout = setTimeout(() => resolve({ ok: false, error }), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 export async function leaveVoice(page: Page): Promise<VoiceActionResult> {
