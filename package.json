@@ -13,9 +13,10 @@
     "bot:build": "npm run -w bot build",
     "bot:deploy-commands": "npm run -w bot deploy-commands",
     "companion": "npm run -w companion start",
-    "build": "npm run -w bot build",
+    "companion:build": "npm run -w companion build",
+    "build": "npm run -w bot build && npm run -w companion build",
     "lint": "npm run -w bot lint",
-    "typecheck": "npm run -w bot typecheck"
+    "typecheck": "npm run -w bot typecheck && npm run -w companion typecheck"
   },
   "engines": {
     "node": ">=20.10.0"
