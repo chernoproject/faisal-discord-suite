@@ -1,4 +1,5 @@
 import {
+  getVoiceConnection,
   joinVoiceChannel,
   EndBehaviorType,
   VoiceConnectionStatus,
@@ -13,6 +14,7 @@ import { RollingBuffer } from "./rollingBuffer.js";
 import { EventTimeline } from "./eventTimeline.js";
 
 const log = logger.child({ mod: "voice-conn" });
+const READY_TIMEOUT_MS = 20_000;
 
 function voiceReadyError(err: unknown): Error {
   const cause = err instanceof Error ? err.message : String(err);
@@ -27,6 +29,11 @@ export interface VoiceSession {
   buffer: RollingBuffer;
   timeline: EventTimeline;
   cleanup: () => void;
+}
+
+async function waitForReady(connection: VoiceConnection): Promise<void> {
+  if (connection.state.status === VoiceConnectionStatus.Ready) return;
+  await entersState(connection, VoiceConnectionStatus.Ready, READY_TIMEOUT_MS);
 }
 
 function attachSpeakingHandler(
@@ -84,23 +91,51 @@ export async function joinAndCapture(args: {
   selfDeaf?: boolean;
 }): Promise<VoiceSession> {
   const { channel, buffer, timeline } = args;
-  const connection = joinVoiceChannel({
-    channelId: channel.id,
-    guildId: channel.guildId,
-    adapterCreator: channel.guild.voiceAdapterCreator,
-    selfDeaf: args.selfDeaf ?? false, // must be false to receive audio
-    selfMute: true,
-  });
+  const existing = getVoiceConnection(channel.guildId);
+  if (existing) {
+    try {
+      existing.destroy();
+    } catch {
+      /* ignore */
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 750));
+  }
+
+  let connection = joinRecordingVoiceChannel(channel, args.selfDeaf ?? false);
+  log.info(
+    {
+      guild: channel.guildId,
+      channel: channel.id,
+      status: connection.state.status,
+      adapterAvailable: Boolean(channel.guild.voiceAdapterCreator),
+    },
+    "recording voice join requested"
+  );
 
   try {
-    await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+    await waitForReady(connection);
   } catch (err) {
+    log.warn(
+      { err, guild: channel.guildId, channel: channel.id, status: connection.state.status },
+      "recording voice join failed, retrying once"
+    );
     try {
       connection.destroy();
     } catch {
       /* ignore */
     }
-    throw voiceReadyError(err);
+    await new Promise<void>((resolve) => setTimeout(resolve, 1_500));
+    connection = joinRecordingVoiceChannel(channel, args.selfDeaf ?? false);
+    try {
+      await waitForReady(connection);
+    } catch (retryErr) {
+      try {
+        connection.destroy();
+      } catch {
+        /* ignore */
+      }
+      throw voiceReadyError(retryErr);
+    }
   }
   log.info({ channel: channel.id }, "voice connection ready");
 
@@ -143,4 +178,14 @@ export async function joinAndCapture(args: {
   };
 
   return { channel, connection, buffer, timeline, cleanup };
+}
+
+function joinRecordingVoiceChannel(channel: VoiceBasedChannel, selfDeaf: boolean): VoiceConnection {
+  return joinVoiceChannel({
+    channelId: channel.id,
+    guildId: channel.guildId,
+    adapterCreator: channel.guild.voiceAdapterCreator,
+    selfDeaf,
+    selfMute: true,
+  });
 }
