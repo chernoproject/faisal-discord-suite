@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { spawn, type ChildProcess } from "node:child_process";
 import { cfg } from "./config.js";
 import { logger } from "./logger.js";
 
 const log = logger.child({ mod: "recorder" });
+const require = createRequire(import.meta.url);
+const ffmpegStaticPath = require("ffmpeg-static") as string | null;
 
 interface ActiveCapture {
   outFile: string;
@@ -13,6 +16,14 @@ interface ActiveCapture {
 }
 
 let active: ActiveCapture | null = null;
+
+function resolveFfmpegPath(): string {
+  if (!cfg.FFMPEG_PATH) return ffmpegStaticPath ?? "ffmpeg";
+  if (fs.existsSync(cfg.FFMPEG_PATH)) return cfg.FFMPEG_PATH;
+  const fallback = ffmpegStaticPath ?? "ffmpeg";
+  log.warn({ configured: cfg.FFMPEG_PATH, fallback }, "configured ffmpeg path not found; using fallback");
+  return fallback;
+}
 
 /**
  * Build ffmpeg args per-platform.
@@ -106,7 +117,7 @@ export function startCapture(label: string): { outFile: string } {
   );
 
   const args = buildFfmpegArgs(outFile);
-  const ffPath = cfg.FFMPEG_PATH || "ffmpeg";
+  const ffPath = resolveFfmpegPath();
   log.info({ ffPath, args }, "spawning ffmpeg");
   const ff = spawn(ffPath, args);
   ff.stderr?.on("data", (d) => log.trace({ ff: d.toString() }, "ffmpeg"));
